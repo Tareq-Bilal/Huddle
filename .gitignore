@@ -4,6 +4,7 @@ node_modules/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Logs
 *.log
@@ -21,3 +22,4 @@ Thumbs.db
 
 # Docs
 BUILD-GUIDE.md
+/src/generated/prisma
