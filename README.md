@@ -151,6 +151,56 @@ Services take plain arguments and return plain data — no `req`, no `res` — w
 
 Cross-feature calls go through `index.ts` only. `vote` importing from `question` means importing `question/index.ts`, never reaching into `question/question.service.ts` directly. This is enforced with an ESLint `no-restricted-imports` rule rather than left to convention.
 
+### Application flow
+
+```mermaid
+flowchart TD
+    Client(["Client"])
+
+    subgraph AppLayer["app.ts"]
+        direction TB
+        Logger["request-logger"]
+        Parsers["express.json + cookie-parser"]
+        RateLimit["rate-limit (Redis)"]
+    end
+
+    Routes["routes.ts<br/>mounts every feature router"]
+
+    subgraph FeatureLayer["Feature module"]
+        direction TB
+        FRoutes["*.routes.ts"]
+        FMiddleware["*.middleware.ts<br/>authenticate / ownership checks"]
+        Controller["*.controller.ts<br/>Zod validation"]
+        Service["*.service.ts<br/>business logic + transactions"]
+        Model["*.model.ts<br/>pure rules, DTOs"]
+        Repository["*.repository.ts<br/>vote only"]
+    end
+
+    Postgres[("PostgreSQL")]
+    Redis[("Redis")]
+    Queue[["BullMQ queue"]]
+    Worker["worker.ts"]
+
+    NotFound["not-found.ts"]
+    ErrorHandler["error-handler.ts"]
+
+    Client --> Logger --> Parsers --> RateLimit --> Routes
+    Routes -->|route matched| FRoutes --> FMiddleware --> Controller --> Service
+    Service --> Model
+    Service -->|vote only| Repository -->|transaction| Postgres
+    Service -->|most features, direct Prisma calls| Postgres
+    Service -->|trending, views, limits| Redis
+    Service -->|enqueue job| Queue --> Worker -->|process job| Redis
+
+    Routes -.no route matched.-> NotFound --> ErrorHandler
+    Controller -.throws.-> ErrorHandler
+    Service -.throws.-> ErrorHandler
+    ErrorHandler -->|error response| Client
+    Controller -->|success response| Client
+```
+
+Every request enters through `app.ts`'s middleware stack, gets routed into exactly one feature, and flows down the layer stack in one direction only — a controller never reaches past its own service, and a service never reaches past its own model or repository. Anything thrown at any layer is caught by `error-handler.ts`, never handled ad hoc partway down the stack.
+
 ### Request lifecycle: `POST /api/v1/votes/questions/:id`
 
 1. `app.ts` middleware runs first — request logging, JSON parsing, the Redis-backed rate limiter.
