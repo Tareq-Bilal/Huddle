@@ -233,7 +233,8 @@ Integration tests (spin up a real Postgres container via Testcontainers, run mig
 npm run test:integration
 ```
 
-<!-- TODO: add CI badge once a pipeline is configured --> ## API overview
+<!-- TODO: add CI badge once a pipeline is configured --> 
+## API overview
 
 | Group     | Endpoints                                                                                                               |
 | --------- | ----------------------------------------------------------------------------------------------------------------------- |
