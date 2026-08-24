@@ -8,7 +8,6 @@ import helmet from "helmet";
 import cors from "cors";
 import { env } from "./config/env.ts";
 import { logger } from "./shared/lib/logger.ts";
-import { skip } from "@prisma/client/runtime/client";
 import morgan from "morgan";
 export const app = express();
 
