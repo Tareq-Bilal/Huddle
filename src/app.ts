@@ -7,6 +7,9 @@ import { requestLogger } from "./shared/middlewares/request-logger.ts";
 import helmet from "helmet";
 import cors from "cors";
 import { env } from "./config/env.ts";
+import { logger } from "./shared/lib/logger.ts";
+import { skip } from "@prisma/client/runtime/client";
+import morgan from "morgan";
 export const app = express();
 
 app.use(requestLogger);
@@ -15,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(helmet());
 app.use(cors());
+app.use(morgan("dev", { skip: () => env.NODE_ENV === "test" }));
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
