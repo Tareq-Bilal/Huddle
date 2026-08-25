@@ -22,6 +22,7 @@ This project exists to apply Clean Architecture and CQRS-style thinking — norm
 ## Features
 
 * **Questions, answers, comments, tags** — standard Q&A content model, tags as a many-to-many relation.
+* **Tag autocomplete and synonym resolution** — typing a prefix matches both real tags and known synonyms (`nodejs` → `Node.js`) via a Redis-cached, cache-optional lookup; posting or creating a tag deduplicates by a normalized slug so `"Node.js"`, `"node js"`, and `"NODE-JS"` all resolve to the same row.
 * **Voting** — upvote/downvote on questions and answers, with reputation changes applied atomically and one vote per user per target enforced at the database level.
 * **Accepted answers** — a question's author can mark one answer accepted.
 * **Full-text search** — search questions by title and body, ranked by relevance, using PostgreSQL's built-in text search rather than a separate search service.
@@ -47,6 +48,7 @@ huddle/
 │   │   ├── answer.prisma
 │   │   ├── comment.prisma
 │   │   ├── tag.prisma
+│   │   ├── tag-synonym.prisma
 │   │   ├── vote.prisma
 │   │   └── refresh-token.prisma
 │   ├── migrations/
@@ -67,6 +69,14 @@ huddle/
 │   │   ├── answer/
 │   │   ├── comment/
 │   │   ├── tag/
+│   │   │   ├── tag.schema.ts            zod input schemas
+│   │   │   ├── tag.model.ts             types, slugify, dedupeById, rankByPopularity
+│   │   │   ├── tag.cache.ts             Redis autocomplete cache, fails open to Postgres
+│   │   │   ├── tag.service.ts           search, resolve-by-slug, find-or-create, create
+│   │   │   ├── tag.controller.ts
+│   │   │   ├── tag.routes.ts
+│   │   │   ├── index.ts                 public contract
+│   │   │   └── __tests__/
 │   │   ├── user/
 │   │   ├── vote/
 │   │   │   ├── vote.schema.ts
@@ -224,6 +234,8 @@ Every request enters through `app.ts`'s middleware stack, gets routed into exact
 
 **Integration tests run against real PostgreSQL via Testcontainers, not mocks.** The properties most worth testing here — the unique constraint rejecting a concurrent vote, a failed transaction leaving no partial writes, a reused refresh token being rejected — are properties of the database, not of application code. A mocked Prisma client can only confirm a function was called with certain arguments; it can't catch a real race condition. Pure logic (reputation math, vote-transition rules) is still covered by fast, colocated unit tests with no infrastructure involved.
 
+**Tags deduplicate by slug, not by name, and synonyms redirect what slugging can't normalize.** A tag's `slug` is derived from its `name` (`slugify`: lowercase, punctuation collapsed to hyphens, `+`/`#` spelled out so `C`, `C++`, and `C#` stay distinct) and is the actual lookup and uniqueness key. Case and punctuation variants of the same name — `"Node.js"`, `"node js"`, `"NODE-JS"` — slugify to the same value and land on the same row for free; no moderation needed. Genuinely different spellings that slugify differently (`nodejs`, `node`) can't be normalized this way, so a separate `TagSynonym` table maps them onto the canonical tag's slug. Creating a brand-new tag under concurrent load has the same race as double-voting: two requests can both see "doesn't exist" and both try to insert. The unique constraint on `slug` — not a check-then-insert in application code — is what actually prevents the duplicate; the losing request just re-reads the row the winner wrote. Autocomplete sits behind a Redis cache that is explicitly allowed to fail: a `get`/`set` error is logged and swallowed rather than thrown, so a Redis outage degrades autocomplete to a slower, Postgres-backed query instead of a 500.
+
 **Refresh tokens rotate and are stored server-side.** A JWT can't be revoked once issued, so a stolen long-lived token is a real liability. Splitting into a short-lived access token and a longer-lived, database-backed, single-use refresh token means a stolen access token expires quickly on its own, and a stolen refresh token can be invalidated by deleting its row. Rotation additionally makes theft detectable: if an already-used refresh token is presented again, the whole token family is revoked and the user is forced to log in again.
 
 ## Getting started
@@ -293,9 +305,11 @@ npm run test:integration
 | Answers   | `POST /questions/:id/answers`,`POST /answers/:id/accept`                                                            |
 | Comments  | `POST /questions/:id/comments`,`POST /answers/:id/comments`                                                         |
 | Votes     | `POST /votes/questions/:id`,`POST /votes/answers/:id`,`DELETE /votes/questions/:id`,`DELETE /votes/answers/:id` |
-| Tags      | `GET /tags`,`GET /tags/:slug/questions`                                                                             |
+| Tags      | `GET /tags?q=&limit=`(autocomplete, or popular tags with no query),`GET /tags/:slug`,`POST /tags`               |
 | Search    | `GET /search?q=`                                                                                                      |
 | Trending  | `GET /trending`                                                                                                       |
+
+`GET /tags/:slug/questions` is planned but blocked on the `question` feature, which doesn't exist yet.
 
 <!-- TODO: full request/response schemas are documented in the generated OpenAPI spec at /docs --> ## Roadmap
 
