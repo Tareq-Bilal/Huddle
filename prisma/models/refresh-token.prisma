@@ -8,4 +8,5 @@ model refreshToken {
     replacedByTokenId Int?
 
     @@index([userId])
+    @@map("refresh_tokens")
 }
