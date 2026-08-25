@@ -77,7 +77,7 @@ export async function listQuestions(query: ListQuestionsQuery): Promise<PagedQue
   return { questions, meta: toPageMeta(total, page, limit) };
 }
 
-export async function getQuestionById(id: number): Promise<QuestionDetail> {
+export async function getQuestionById(id: string): Promise<QuestionDetail> {
   const question = await prisma.question.findUnique({ where: { id }, select: DETAIL_FIELDS });
 
   if (!question) {

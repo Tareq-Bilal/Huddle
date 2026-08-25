@@ -31,8 +31,11 @@ const { createQuestion, getQuestionById, listQuestions } = await import("../ques
 const nodeJs = { id: 1, name: "Node.js", slug: "node-js", questionCount: 12403 };
 const express = { id: 2, name: "Express", slug: "express", questionCount: 900 };
 
+const QUESTION_ID = "0199d1c2-8f3a-7c41-9b2e-5a6d7e8f9a0b";
+const MISSING_ID = "0199d1c2-8f3a-7c41-9b2e-000000000000";
+
 const question = {
-  id: 100,
+  id: QUESTION_ID,
   title: "How do I stream a large file in Node.js?",
   body: "I need to send a multi-gigabyte file without loading it into memory.",
   score: 0,
@@ -174,19 +177,19 @@ describe("getQuestionById", () => {
   it("returns the question when it exists", async () => {
     mocks.questionFindUnique.mockResolvedValue(question);
 
-    await expect(getQuestionById(100)).resolves.toEqual(question);
+    await expect(getQuestionById(QUESTION_ID)).resolves.toEqual(question);
   });
 
   it("throws NotFound when it does not", async () => {
     mocks.questionFindUnique.mockResolvedValue(null);
 
-    await expect(getQuestionById(999)).rejects.toThrow(NotFoundError);
+    await expect(getQuestionById(MISSING_ID)).rejects.toThrow(NotFoundError);
   });
 
   it("includes the body, unlike the list view", async () => {
     mocks.questionFindUnique.mockResolvedValue(question);
 
-    await getQuestionById(100);
+    await getQuestionById(QUESTION_ID);
 
     const call = mocks.questionFindUnique.mock.calls[0]?.[0] as { select: Record<string, unknown> };
     expect(call.select).toHaveProperty("body", true);

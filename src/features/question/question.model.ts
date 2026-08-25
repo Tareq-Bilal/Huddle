@@ -11,7 +11,7 @@ export type QuestionTag = {
 /** What a question looks like in a list — everything except the body, which is
  *  the expensive field and the one nobody reads from an index page. */
 export type QuestionSummary = {
-  id: number;
+  id: string;
   title: string;
   score: number;
   viewCount: number;

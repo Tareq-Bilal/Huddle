@@ -24,8 +24,10 @@ export const listQuestionsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+/** Accepts any well-formed UUID rather than v7 specifically — the format is
+ *  what needs guarding, and an id that is valid but unknown simply 404s. */
 export const questionIdParamSchema = z.object({
-  id: z.coerce.number().int().positive("Question id must be a positive integer"),
+  id: z.uuid("Question id must be a valid UUID"),
 });
 
 export type CreateQuestionDto = z.infer<typeof createQuestionSchema>;
