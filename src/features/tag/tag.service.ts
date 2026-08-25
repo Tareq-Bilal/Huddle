@@ -1,11 +1,15 @@
-import { Prisma } from "../../generated/prisma/client.ts";
 import { ConflictError, NotFoundError } from "../../shared/errors/app-error.ts";
+import { isUniqueViolation } from "../../shared/errors/prisma-error.ts";
 import { prisma } from "../../shared/lib/prisma.ts";
 import { getCachedSuggestions, setCachedSuggestions } from "./tag.cache.ts";
 import type { Tag, TagSuggestion } from "./tag.model.ts";
 import { dedupeById, rankByPopularity, slugify, toTagSuggestion } from "./tag.model.ts";
 
+/** Every query returns the same shape, so `Tag` is the only row type in play. */
 const TAG_FIELDS = { id: true, name: true, slug: true, questionCount: true } as const;
+
+/** A synonym row is only ever interesting for the tag it points at. */
+const CANONICAL_TAG = { tag: { select: TAG_FIELDS } } as const;
 
 /**
  * Autocomplete. Matches the typed prefix against real tags and against synonyms,
@@ -14,8 +18,14 @@ const TAG_FIELDS = { id: true, name: true, slug: true, questionCount: true } as 
  *
  * The query is slugified before matching, so "Node.J", "node j" and "NODE-J"
  * all search for the same thing. One normalisation rule, used everywhere.
+ *
+ * An empty query is not an error: it means "show me the popular tags", which is
+ * what an autocomplete dropdown should display before the user types anything.
  */
-export async function searchTags(query: string | undefined, limit: number): Promise<TagSuggestion[]> {
+export async function searchTags(
+  query: string | undefined,
+  limit: number,
+): Promise<TagSuggestion[]> {
   const prefix = query ? slugify(query) : "";
 
   const cached = await getCachedSuggestions(prefix, limit);
@@ -23,27 +33,13 @@ export async function searchTags(query: string | undefined, limit: number): Prom
     return cached;
   }
 
-  // No query means "show me the popular tags" rather than "show me nothing".
   const [direct, viaSynonym] = await Promise.all([
-    prisma.tag.findMany({
-      where: prefix ? { slug: { startsWith: prefix } } : undefined,
-      select: TAG_FIELDS,
-      orderBy: { questionCount: "desc" },
-      take: limit,
-    }),
-    prefix
-      ? prisma.tagSynonym.findMany({
-          where: { slug: { startsWith: prefix } },
-          select: { tag: { select: TAG_FIELDS } },
-          take: limit,
-        })
-      : Promise.resolve([]),
+    findTagsByPrefix(prefix, limit),
+    findTagsBySynonymPrefix(prefix, limit),
   ]);
 
-  const suggestions = rankByPopularity(
-    dedupeById([...direct, ...viaSynonym.map((synonym) => synonym.tag)]),
-    limit,
-  ).map(toTagSuggestion);
+  const suggestions = rankByPopularity(dedupeById([...direct, ...viaSynonym]), limit)
+    .map(toTagSuggestion);
 
   await setCachedSuggestions(prefix, limit, suggestions);
 
@@ -53,21 +49,13 @@ export async function searchTags(query: string | undefined, limit: number): Prom
 /** Resolves a slug to its canonical tag, following a synonym if that is what
  *  the slug turned out to be. */
 export async function getTagBySlug(slug: string): Promise<Tag> {
-  const tag = await prisma.tag.findUnique({ where: { slug }, select: TAG_FIELDS });
-  if (tag) {
-    return tag;
-  }
+  const tag = await resolveSlug(slug);
 
-  const synonym = await prisma.tagSynonym.findUnique({
-    where: { slug },
-    select: { tag: { select: TAG_FIELDS } },
-  });
-
-  if (!synonym) {
+  if (!tag) {
     throw new NotFoundError(`No tag found for "${slug}"`);
   }
 
-  return synonym.tag;
+  return tag;
 }
 
 /**
@@ -89,10 +77,15 @@ export async function findOrCreateByNames(names: string[]): Promise<Tag[]> {
 export async function createTag(name: string): Promise<Tag> {
   const slug = slugify(name);
 
-  await assertSlugIsFree(slug);
+  // A slug must not be a tag and a synonym at the same time, or lookup order
+  // silently decides which one wins. No single constraint spans both tables,
+  // so this check lives in application code.
+  if (await prisma.tagSynonym.findUnique({ where: { slug } })) {
+    throw new ConflictError(`"${slug}" is already a synonym and cannot be a tag`);
+  }
 
   try {
-    return await prisma.tag.create({ data: { name, slug }, select: TAG_FIELDS });
+    return await insertTag(name, slug);
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new ConflictError(`A tag with the slug "${slug}" already exists`);
@@ -108,23 +101,29 @@ async function findOrCreateOne(name: string, slug: string): Promise<Tag> {
   }
 
   try {
-    return await prisma.tag.create({ data: { name, slug }, select: TAG_FIELDS });
+    return await insertTag(name, slug);
   } catch (error) {
     // Two questions submitted at the same moment with the same new tag both
     // saw "does not exist" and both tried to insert. The unique constraint
     // settles it; the loser just reads the row the winner wrote. Same pattern
     // as the vote constraint — the database arbitrates the race, not a lock.
-    if (isUniqueViolation(error)) {
-      const winner = await resolveSlug(slug);
-      if (winner) {
-        return winner;
-      }
+    const winner = isUniqueViolation(error) ? await resolveSlug(slug) : null;
+
+    if (!winner) {
+      throw error;
     }
-    throw error;
+
+    return winner;
   }
 }
 
-/** Looks a slug up as a tag first, then as a synonym. Returns null if neither. */
+function insertTag(name: string, slug: string): Promise<Tag> {
+  return prisma.tag.create({ data: { name, slug }, select: TAG_FIELDS });
+}
+
+/** Looks a slug up as a tag first, then as a synonym. Returns null if neither.
+ *  Sequential rather than parallel because a direct hit is the common case and
+ *  costs one query; only a miss pays for the second. */
 async function resolveSlug(slug: string): Promise<Tag | null> {
   const tag = await prisma.tag.findUnique({ where: { slug }, select: TAG_FIELDS });
   if (tag) {
@@ -133,21 +132,36 @@ async function resolveSlug(slug: string): Promise<Tag | null> {
 
   const synonym = await prisma.tagSynonym.findUnique({
     where: { slug },
-    select: { tag: { select: TAG_FIELDS } },
+    select: CANONICAL_TAG,
   });
 
   return synonym?.tag ?? null;
 }
 
-/** A slug must not be a tag and a synonym at the same time, or lookup order
- *  silently decides which one wins. No single constraint spans both tables,
- *  so the check lives here. */
-async function assertSlugIsFree(slug: string): Promise<void> {
-  const synonym = await prisma.tagSynonym.findUnique({ where: { slug } });
+/** With no prefix this lists the most-used tags rather than nothing. */
+function findTagsByPrefix(prefix: string, limit: number): Promise<Tag[]> {
+  return prisma.tag.findMany({
+    where: prefix ? { slug: { startsWith: prefix } } : undefined,
+    select: TAG_FIELDS,
+    orderBy: { questionCount: "desc" },
+    take: limit,
+  });
+}
 
-  if (synonym) {
-    throw new ConflictError(`"${slug}" is already a synonym and cannot be a tag`);
+/** Synonyms are a redirect table, so this returns what they point at, not the
+ *  synonyms themselves. With no prefix there is nothing to redirect. */
+async function findTagsBySynonymPrefix(prefix: string, limit: number): Promise<Tag[]> {
+  if (!prefix) {
+    return [];
   }
+
+  const synonyms = await prisma.tagSynonym.findMany({
+    where: { slug: { startsWith: prefix } },
+    select: CANONICAL_TAG,
+    take: limit,
+  });
+
+  return synonyms.map((synonym) => synonym.tag);
 }
 
 /** Collapses names that slugify to the same key, keeping the first spelling
@@ -163,8 +177,4 @@ function dedupeSlugs(names: string[]): { name: string; slug: string }[] {
   }
 
   return [...seen].map(([slug, name]) => ({ name, slug }));
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }

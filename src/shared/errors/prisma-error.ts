@@ -1,6 +1,14 @@
 import { Prisma } from "../../generated/prisma/client.ts";
 import { AppError, ConflictError } from "./app-error.ts";
 
+/** True when Postgres rejected a write for breaking a unique constraint.
+ *  A caller that *expects* the collision — find-or-create racing against itself —
+ *  uses this to recover; everything else lets the error reach the error handler,
+ *  which turns it into a 409 via `translatePrismaError` below. */
+export function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
 export function translatePrismaError(error: unknown): AppError | null {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
     return null;
