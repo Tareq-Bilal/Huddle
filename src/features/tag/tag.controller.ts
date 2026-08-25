@@ -19,7 +19,8 @@ export const getBySlug = catchAsync(async (req: Request, res: Response) => {
 
 export const create = catchAsync(async (req: Request, res: Response) => {
   const { name } = req.body as CreateTagDto;
-  const tag = await tagService.createTag(name);
+  // `authenticate` runs before this handler, so req.user is always set here.
+  const tag = await tagService.createTag(name, req.user!.id);
 
   res.status(201).json({ tag });
 });

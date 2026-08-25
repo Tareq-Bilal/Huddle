@@ -1,9 +1,16 @@
-import { ConflictError, NotFoundError } from "../../shared/errors/app-error.ts";
+import { ConflictError, ForbiddenError, NotFoundError } from "../../shared/errors/app-error.ts";
 import { isUniqueViolation } from "../../shared/errors/prisma-error.ts";
 import { prisma } from "../../shared/lib/prisma.ts";
 import { getCachedSuggestions, setCachedSuggestions } from "./tag.cache.ts";
 import type { Tag, TagSuggestion } from "./tag.model.ts";
-import { dedupeById, rankByPopularity, slugify, toTagSuggestion } from "./tag.model.ts";
+import {
+  MIN_REPUTATION_TO_CREATE_TAG,
+  canCreateTag,
+  dedupeById,
+  rankByPopularity,
+  slugify,
+  toTagSuggestion,
+} from "./tag.model.ts";
 
 /** Every query returns the same shape, so `Tag` is the only row type in play. */
 const TAG_FIELDS = { id: true, name: true, slug: true, questionCount: true } as const;
@@ -60,22 +67,30 @@ export async function getTagBySlug(slug: string): Promise<Tag> {
 
 /**
  * Turns a list of user-supplied names into tag rows, reusing whatever already
- * exists. This is what the question feature will call when a question is posted.
+ * exists. Called by the question feature when a question is posted.
  *
  * Names that differ only in case or punctuation ("Node.js", "node js") slugify
  * to the same key and therefore land on the same row — no duplicates created.
+ *
+ * Reusing an existing tag is free for any caller. Creating one is not: it needs
+ * `MIN_REPUTATION_TO_CREATE_TAG`, because this is the path most tags are really
+ * born through, and leaving it open would make the gate on `POST /tags`
+ * decorative.
  */
-export async function findOrCreateByNames(names: string[]): Promise<Tag[]> {
+export async function findOrCreateByNames(names: string[], userId: number): Promise<Tag[]> {
   const unique = dedupeSlugs(names);
+  const reputation = await getReputation(userId);
 
-  return Promise.all(unique.map(({ name, slug }) => findOrCreateOne(name, slug)));
+  return Promise.all(unique.map(({ name, slug }) => findOrCreateOne(name, slug, reputation)));
 }
 
 /** Explicit tag creation, for the `POST /tags` endpoint. Unlike
  *  `findOrCreateByNames` this reports a conflict instead of silently reusing,
  *  because the caller asked to create something specific. */
-export async function createTag(name: string): Promise<Tag> {
+export async function createTag(name: string, userId: number): Promise<Tag> {
   const slug = slugify(name);
+
+  requireCanCreateTag(await getReputation(userId), name);
 
   // A slug must not be a tag and a synonym at the same time, or lookup order
   // silently decides which one wins. No single constraint spans both tables,
@@ -94,11 +109,13 @@ export async function createTag(name: string): Promise<Tag> {
   }
 }
 
-async function findOrCreateOne(name: string, slug: string): Promise<Tag> {
+async function findOrCreateOne(name: string, slug: string, reputation: number): Promise<Tag> {
   const existing = await resolveSlug(slug);
   if (existing) {
     return existing;
   }
+
+  requireCanCreateTag(reputation, name);
 
   try {
     return await insertTag(name, slug);
@@ -119,6 +136,29 @@ async function findOrCreateOne(name: string, slug: string): Promise<Tag> {
 
 function insertTag(name: string, slug: string): Promise<Tag> {
   return prisma.tag.create({ data: { name, slug }, select: TAG_FIELDS });
+}
+
+/** Names the offending tag rather than failing generically — the caller needs
+ *  to know which of their five tags is the problem so they can fix it. */
+function requireCanCreateTag(reputation: number, name: string): void {
+  if (!canCreateTag(reputation)) {
+    throw new ForbiddenError(
+      `The tag "${name}" does not exist yet, and creating a tag requires ${MIN_REPUTATION_TO_CREATE_TAG} reputation`,
+    );
+  }
+}
+
+async function getReputation(userId: number): Promise<number> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { reputation: true },
+  });
+
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  return user.reputation;
 }
 
 /** Looks a slug up as a tag first, then as a synonym. Returns null if neither.
