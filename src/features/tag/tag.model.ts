@@ -38,6 +38,19 @@ export function rankByPopularity(tags: Tag[], limit: number): Tag[] {
 }
 
 /**
+ * Reputation needed to add a word to the shared taxonomy.
+ *
+ * Using tags that already exist is free for everyone — autocomplete exists so
+ * most people never reach this check. The gate only fires on genuinely new
+ * vocabulary, which is what keeps five spellings of "Node.js" from appearing.
+ */
+export const MIN_REPUTATION_TO_CREATE_TAG = 300;
+
+export function canCreateTag(reputation: number): boolean {
+  return reputation >= MIN_REPUTATION_TO_CREATE_TAG;
+}
+
+/**
  * Derives a tag's URL key from its display name.
  *
  * `+` and `#` are spelled out instead of stripped: "C++", "C#", and "C" would
