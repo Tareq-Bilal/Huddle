@@ -1,0 +1,15 @@
+/// Maps an alternative spelling onto the tag it really means, for the cases
+/// slugify cannot normalise on its own: "nodejs" and "node" are different
+/// strings from "node-js", not just different punctuation.
+///
+/// A synonym slug must never equal a real tag slug — no single constraint spans
+/// both tables, so tag.service.ts enforces it on each write path.
+model TagSynonym {
+    id    Int    @id @default(autoincrement())
+    slug  String @unique
+    tagId Int
+    tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+    @@index([tagId])
+    @@map("tag_synonyms")
+}

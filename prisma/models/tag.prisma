@@ -1,0 +1,13 @@
+model Tag{
+    id        Int      @id @default(autoincrement())
+    name      String   @unique
+    slug     String   @unique
+
+    // Denormalised so autocomplete can rank by popularity without counting rows
+    // on every keystroke. Maintained by the question feature when it lands.
+    questionCount Int  @default(0)
+
+    synonyms TagSynonym[]
+
+    @@map("tags")
+}
