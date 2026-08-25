@@ -8,6 +8,7 @@ model Tag{
     questionCount Int  @default(0)
 
     synonyms TagSynonym[]
+    questions Question[]
 
     @@map("tags")
 }

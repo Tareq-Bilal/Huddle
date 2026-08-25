@@ -1,0 +1,27 @@
+model Question {
+    id        Int      @id @default(autoincrement())
+    title     String
+    body      String
+
+    /// Maintained by the vote feature; present here because it is an attribute
+    /// of the question itself, not of the voting machinery.
+    score     Int      @default(0)
+
+    /// Flushed periodically from Redis by the view-counter feature.
+    viewCount Int      @default(0)
+
+    authorId  Int
+    author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+    /// Implicit many-to-many: Prisma manages the join table. There is no
+    /// metadata on the relationship itself, so an explicit join model would be
+    /// structure without a reason.
+    tags      Tag[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([authorId])
+    @@index([createdAt])
+    @@map("questions")
+}
