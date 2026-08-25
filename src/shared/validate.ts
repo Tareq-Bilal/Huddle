@@ -15,7 +15,17 @@ export function validate(schema: ZodType, target: ValidationTarget): RequestHand
       return;
     }
 
-    req[target] = result.data;
+    // Express 5 exposes req.query as a getter with no setter, so a plain
+    // assignment throws "Cannot set property query" in strict mode (this
+    // project is ESM, so every module runs strict). req.body and req.params
+    // are still plain writable properties — defineProperty works for all
+    // three targets, so it is used uniformly rather than special-cased.
+    Object.defineProperty(req, target, {
+      value: result.data,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
     next();
   };
 }
