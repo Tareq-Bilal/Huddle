@@ -18,6 +18,8 @@ model Answer {
     /// the pointer is on the question.
     acceptedBy Question? @relation("AcceptedAnswer")
 
+    comments   Comment[]
+
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
 

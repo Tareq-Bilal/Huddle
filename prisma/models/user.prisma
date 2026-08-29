@@ -9,6 +9,7 @@ model User{
     refreshTokens refreshToken[]
     questions Question[]
     answers   Answer[]
+    comments  Comment[]
 
     @@map("users")
 }

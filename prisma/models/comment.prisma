@@ -1,0 +1,28 @@
+/// A short remark attached to a question or to an answer — a clarification, a
+/// correction, or "did you try X?". Comments are not answers: they are never
+/// accepted and never sorted by score.
+model Comment {
+    id         String    @id @default(uuid(7)) @db.Uuid
+    body       String
+
+    authorId   Int
+    author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+    /// Exactly one of questionId and answerId is set — a comment hangs off one
+    /// or the other, never both and never neither. Prisma has no way to express
+    /// that, so a CHECK constraint in the migration enforces it rather than
+    /// leaving the rule to application code.
+    questionId String?   @db.Uuid
+    question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+    answerId   String?   @db.Uuid
+    answer     Answer?   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
+    @@index([questionId])
+    @@index([answerId])
+    @@index([authorId])
+    @@map("comments")
+}
