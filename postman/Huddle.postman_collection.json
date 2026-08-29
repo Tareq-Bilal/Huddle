@@ -22,7 +22,7 @@
                 }
               ]
             },
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -59,7 +59,7 @@
                 }
               ]
             },
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
