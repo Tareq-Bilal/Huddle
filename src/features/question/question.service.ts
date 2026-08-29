@@ -1,8 +1,9 @@
 import { NotFoundError } from "../../shared/errors/app-error.ts";
 import { prisma } from "../../shared/lib/prisma.ts";
+import { toPageMeta, toSkip } from "../../shared/pagination.ts";
 import { findOrCreateByNames } from "../tag/index.ts";
 import type { PagedQuestions, QuestionDetail } from "./question.model.ts";
-import { diffTagIds, toPageMeta, toSkip } from "./question.model.ts";
+import { diffTagIds } from "./question.model.ts";
 import type {
   CreateQuestionDto,
   ListQuestionsQuery,
