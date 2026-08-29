@@ -317,3 +317,9 @@ npm run test:integration
 * [ ] Real-time notifications over WebSockets, backed by Redis pub/sub
 * [ ] Reputation-gated moderation actions (edit, close, delete)
 * [ ] Admin/moderator role and permissions model
+* [ ] **Keep answers answer-shaped and comments comment-shaped.** Nothing today stops someone posting "what Node version are you on?" as an answer — the length rules (30 characters minimum for an answer, a 600-character ceiling for a comment) are friction, not verification, and no automated check can reliably classify prose. This is a community problem with community mechanisms, to be built in this order:
+  * [ ] **Voting** — the primary fix. A comment posted as an answer gets downvoted, sinks to the bottom, and costs its author reputation. Self-correcting, no moderator in the loop. Depends on the `vote` feature.
+  * [ ] **Conversion** — `POST /answers/:id/convert-to-comment`: delete the answer and recreate its text as a comment on the same question, both inside one transaction. The answer row already carries everything a comment needs (`body`, `authorId`, `questionId`). Refuse the conversion when the body exceeds the comment ceiling rather than truncating. Needs an authorization rule — answer owner or question owner until roles exist.
+  * [ ] **Client-side nudges** — warn when an answer is short and ends in a question mark. A hint at compose time, never an API rejection: a legitimate one-line answer exists, and a false positive on a hard block is worse than the mis-posted comment it would have prevented.
+
+  Explicitly not doing: LLM or heuristic classification on the write path. It adds latency and a failure mode to every post, still misjudges edge cases, and teaches nothing about the stack this project exists to learn.
