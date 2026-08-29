@@ -4,6 +4,7 @@ import type {
   CreateQuestionDto,
   ListQuestionsQuery,
   QuestionIdParam,
+  UpdateQuestionDto,
 } from "./question.schema.ts";
 import * as questionService from "./question.service.ts";
 
@@ -30,4 +31,23 @@ export const getById = catchAsync(async (req: Request, res: Response) => {
   const question = await questionService.getQuestionById(id);
 
   res.status(200).json({ question });
+});
+
+export const update = catchAsync(async (req: Request, res: Response) => {
+  // `requireQuestionOwner` has already confirmed req.user owns this question.
+  const { id } = req.params as unknown as QuestionIdParam;
+  const question = await questionService.updateQuestion(
+    id,
+    req.body as UpdateQuestionDto,
+    req.user!.id,
+  );
+
+  res.status(200).json({ question });
+});
+
+export const remove = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params as unknown as QuestionIdParam;
+  await questionService.deleteQuestion(id);
+
+  res.status(204).send();
 });
