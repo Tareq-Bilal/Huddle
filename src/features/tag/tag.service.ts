@@ -79,9 +79,14 @@ export async function getTagBySlug(slug: string): Promise<Tag> {
  */
 export async function findOrCreateByNames(names: string[], userId: number): Promise<Tag[]> {
   const unique = dedupeSlugs(names);
-  const reputation = await getReputation(userId);
 
-  return Promise.all(unique.map(({ name, slug }) => findOrCreateOne(name, slug, reputation)));
+  // The author's reputation and what their tags resolve to are independent
+  // questions, so both go out at once.
+  const [reputation, resolved] = await Promise.all([getReputation(userId), resolveAll(unique)]);
+
+  requireCanCreateMissingTags(resolved, reputation);
+
+  return Promise.all(resolved.map((entry) => entry.tag ?? createOne(entry.name, entry.slug)));
 }
 
 /** Explicit tag creation, for the `POST /tags` endpoint. Unlike
@@ -109,14 +114,38 @@ export async function createTag(name: string, userId: number): Promise<Tag> {
   }
 }
 
-async function findOrCreateOne(name: string, slug: string, reputation: number): Promise<Tag> {
-  const existing = await resolveSlug(slug);
-  if (existing) {
-    return existing;
+/** A submitted name paired with whatever it resolved to — `null` means no tag
+ *  and no synonym matched, so this one would have to be created. */
+type ResolvedName = { name: string; slug: string; tag: Tag | null };
+
+function resolveAll(unique: { name: string; slug: string }[]): Promise<ResolvedName[]> {
+  return Promise.all(
+    unique.map(async (entry) => ({ ...entry, tag: await resolveSlug(entry.slug) })),
+  );
+}
+
+/**
+ * Rejects the whole batch when the author cannot mint the tags they asked for,
+ * naming every unknown one at once. Failing on the first offender instead would
+ * make them resubmit the entire question once per bad tag.
+ */
+function requireCanCreateMissingTags(resolved: ResolvedName[], reputation: number): void {
+  if (canCreateTag(reputation)) {
+    return;
   }
 
-  requireCanCreateTag(reputation, name);
+  const missing = resolved.filter((entry) => !entry.tag).map((entry) => entry.name);
 
+  if (missing.length > 0) {
+    throw new ForbiddenError(
+      `Creating a tag requires ${MIN_REPUTATION_TO_CREATE_TAG} reputation, and these do not exist yet: ${missing.join(", ")}`,
+    );
+  }
+}
+
+/** The reputation gate has already passed, so all that is left is the insert
+ *  and its race recovery. */
+async function createOne(name: string, slug: string): Promise<Tag> {
   try {
     return await insertTag(name, slug);
   } catch (error) {

@@ -216,6 +216,28 @@ describe("findOrCreateByNames", () => {
       );
     });
 
+    it("names every unknown tag in one error, not just the first", async () => {
+      // Otherwise the author resubmits the whole question once per bad tag,
+      // learning about them one at a time.
+      mocks.userFindUnique.mockResolvedValue({ reputation: 0 });
+
+      await expect(findOrCreateByNames(["Alpha", "Beta", "Gamma"], USER_ID)).rejects.toThrow(
+        /Alpha.*Beta.*Gamma/,
+      );
+    });
+
+    it("reports only the unknown tags, not the ones that already exist", async () => {
+      mocks.userFindUnique.mockResolvedValue({ reputation: 0 });
+      mocks.tagFindUnique.mockImplementation(async ({ where }: { where: { slug: string } }) =>
+        where.slug === "node-js" ? nodeJs : null,
+      );
+
+      const attempt = findOrCreateByNames(["Node.js", "BrandNewThing"], USER_ID);
+
+      await expect(attempt).rejects.toThrow(/BrandNewThing/);
+      await expect(attempt).rejects.not.toThrow(/Node\.js/);
+    });
+
     it("allows a user at the threshold to create", async () => {
       mocks.userFindUnique.mockResolvedValue({ reputation: MIN_REPUTATION_TO_CREATE_TAG });
       mocks.tagCreate.mockResolvedValue({
