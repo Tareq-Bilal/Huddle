@@ -688,6 +688,560 @@
       ]
     },
     {
+      "name": "Answer",
+      "description": "Needs questionId (from Create Question). The capture scripts fill answerId and otherAnswerId. The 403 requests need a second user's token in otherAccessToken.",
+      "item": [
+        {
+          "name": "Create Answer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save the new answer's UUID for the accept / update / delete requests",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"answerId\", pm.response.json().answer.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Use fs.createReadStream and pipe it straight to the response so the file never sits in memory.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/answers",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "answers"
+              ]
+            },
+            "description": "Posted as the logged-in user (collection bearer). A fresh answer comes back with isAccepted false."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Answer - Second User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A second answer, owned by the other user, for the accept and 403 flows",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"otherAnswerId\", pm.response.json().answer.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Another approach: stream through a Transform if you need to gzip the file on the way out.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/answers",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "answers"
+              ]
+            },
+            "description": "Register/log in a second user and put their access token in otherAccessToken first."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Answer - Validation Error (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"too short\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/answers",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "answers"
+              ]
+            },
+            "description": "Body must be at least 30 characters."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Answer - No Auth (401)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Use fs.createReadStream and pipe it straight to the response so the file never sits in memory.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/answers",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "answers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Answer - Question Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Use fs.createReadStream and pipe it straight to the response so the file never sits in memory.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000/answers",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000",
+                "answers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Answers",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/answers?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "answers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Public. Oldest answer first. Each row carries isAccepted; at most one is true."
+          },
+          "response": []
+        },
+        {
+          "name": "List Answers - Question Not Found (404)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000/answers",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000",
+                "answers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Answer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{otherAnswerId}}/accept",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{otherAnswerId}}",
+                "accept"
+              ]
+            },
+            "description": "Run as the question's author (collection bearer). Accepts the second user's answer. Re-running against {{answerId}} moves the mark — only ever one isAccepted."
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Answer - Not Question Author (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}/accept",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}",
+                "accept"
+              ]
+            },
+            "description": "The second user is not the question's author, so accepting is refused."
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Answer - Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/00000000-0000-7000-8000-000000000000/accept",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "00000000-0000-7000-8000-000000000000",
+                "accept"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Answer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Edit: prefer stream.pipeline over .pipe so errors on either side are handled.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}"
+              ]
+            },
+            "description": "Owner only (collection bearer)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Answer - Empty Body (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}"
+              ]
+            },
+            "description": "body is the only field and it is required."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Answer - Not Owner (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Trying to edit an answer that belongs to someone else entirely.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Answer - Not Found (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Editing an answer id that does not correspond to any row.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Answer - Not Owner (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}"
+              ]
+            },
+            "description": "Run before Delete Answer — afterwards there is nothing left to refuse."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Answer - Not Found (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Answer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}"
+              ]
+            },
+            "description": "Returns 204. If this answer was the accepted one, the question's acceptedAnswerId is cleared automatically (SET NULL). List Answers afterwards shows it gone."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "health",
       "request": {
         "method": "GET",
@@ -758,6 +1312,14 @@
     },
     {
       "key": "otherAccessToken",
+      "value": ""
+    },
+    {
+      "key": "answerId",
+      "value": ""
+    },
+    {
+      "key": "otherAnswerId",
       "value": ""
     }
   ]
