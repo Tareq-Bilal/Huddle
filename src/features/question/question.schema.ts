@@ -19,6 +19,15 @@ export const createQuestionSchema = z.object({
     .max(5, "At most 5 tags are allowed"),
 });
 
+/** Every field is optional on update, but the request must change *something* —
+ *  an empty patch is a client bug, not a no-op worth a 200. When `tags` is
+ *  present it still has to satisfy the same 1..5 rule as on create. */
+export const updateQuestionSchema = createQuestionSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Provide at least one field to update",
+  });
+
 export const listQuestionsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -31,5 +40,6 @@ export const questionIdParamSchema = z.object({
 });
 
 export type CreateQuestionDto = z.infer<typeof createQuestionSchema>;
+export type UpdateQuestionDto = z.infer<typeof updateQuestionSchema>;
 export type ListQuestionsQuery = z.infer<typeof listQuestionsQuerySchema>;
 export type QuestionIdParam = z.infer<typeof questionIdParamSchema>;
