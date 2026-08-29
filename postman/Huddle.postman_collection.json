@@ -1,0 +1,764 @@
+{
+  "info": {
+    "_postman_id": "afd4e089-0a79-4163-aa92-0e978f03ac6a",
+    "name": "Huddle",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "45336412"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "register",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/auth/register",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "login",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoidGFyZXF4cGVydEBnbWFpbC5jb20iLCJpYXQiOjE3ODc1NjY0NTIsImV4cCI6MTc4NzU2NzM1Mn0.RwrWSiVb0erWh0OSHR2klpMW_-XwBRgFeHgozgB9Ih0",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\" : \r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/auth/login",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tag",
+      "item": [
+        {
+          "name": "Search Tags (Autocomplete)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/tags?q=node&limit=10",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "tags"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "node"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Popular Tags",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/tags",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "tags"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tag By Slug",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/tags/node-js",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "tags",
+                "node-js"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tag By Slug - Not Found (404)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/tags/does-not-exist-xyz",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "tags",
+                "does-not-exist-xyz"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"React\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/tags",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "tags"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Tag - Duplicate (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"React\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/tags",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "tags"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Question",
+      "item": [
+        {
+          "name": "List Questions",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Question By Id",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Question By Id - Not Found (404)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save the new question's UUID so \"Get Question By Id\" can use it",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"questionId\", pm.response.json().question.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"title\": \"How do I stream a large file in Node.js?\",\r\n    \"body\": \"I need to send a multi-gigabyte file without loading it into memory. What's the right approach with streams?\",\r\n    \"tags\": [\"Node.js\", \"Express\"]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question - Validation Error (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"title\": \"short\",\r\n    \"body\": \"too short\",\r\n    \"tags\": []\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Question - No Auth (401)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"title\": \"How do I stream a large file in Node.js?\",\r\n    \"body\": \"I need to send a multi-gigabyte file without loading it into memory. What's the right approach with streams?\",\r\n    \"tags\": [\"Node.js\", \"Express\"]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Question - Title Only",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"title\": \"How do I stream a very large file in Node.js?\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Tags are omitted, so they stay exactly as they were and no tag questionCount moves."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Question - Replace Tags",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"tags\": [\"Node.js\", \"PostgreSQL\"]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Sending `tags` replaces the whole set. Against the tags from Create Question, Express is dropped and PostgreSQL is added — check GET /tags?q=express and ?q=postgres afterwards to see questionCount move by one each way. Creating a brand-new tag needs 300 reputation, so stick to tags that already exist unless the logged-in user is over that."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Question - Empty Body (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "A patch has to change at least one field."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Question - Not Owner (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"title\": \"Trying to edit someone else's question\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Register or log in a second user, then put their access token in the otherAccessToken collection variable before running this."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Question - Not Found (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"title\": \"Editing a question that does not exist\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Question - Not Owner (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Uses the second user's token, same as the 403 above. Run this before Delete Question — afterwards there is nothing left to be refused."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Question - Not Found (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Question",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}"
+              ]
+            },
+            "description": "Returns 204 with no body. Afterwards Get Question By Id on the same id returns 404, and every tag the question carried has lost one from its questionCount."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "questionId",
+      "value": ""
+    },
+    {
+      "key": "otherAccessToken",
+      "value": ""
+    }
+  ]
+}
