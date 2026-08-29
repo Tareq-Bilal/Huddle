@@ -21,6 +21,14 @@ model Question {
     /// structure without a reason.
     tags      Tag[]
 
+    answers   Answer[] @relation("QuestionAnswers")
+
+    /// Exactly one accepted answer, or none. The `@unique` is what makes Postgres
+    /// enforce "at most one per question"; `SetNull` means deleting the accepted
+    /// answer simply clears the mark rather than blocking the delete.
+    acceptedAnswerId String? @unique @db.Uuid
+    acceptedAnswer   Answer? @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id], onDelete: SetNull)
+
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 

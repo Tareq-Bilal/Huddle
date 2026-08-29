@@ -1,0 +1,27 @@
+model Answer {
+    /// UUIDv7 like Question — time-ordered, so inserts append to the primary-key
+    /// index instead of scattering across it.
+    id         String   @id @default(uuid(7)) @db.Uuid
+    body       String
+
+    /// Maintained by the vote feature later; an attribute of the answer itself,
+    /// not of the voting machinery.
+    score      Int      @default(0)
+
+    authorId   Int
+    author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+    questionId String   @db.Uuid
+    question   Question @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
+
+    /// Back-side of Question.acceptedAnswer. No foreign-key column lives here —
+    /// the pointer is on the question.
+    acceptedBy Question? @relation("AcceptedAnswer")
+
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    @@index([questionId])
+    @@index([authorId])
+    @@map("answers")
+}

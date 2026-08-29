@@ -8,6 +8,7 @@ model User{
     updatedAt DateTime @updatedAt
     refreshTokens refreshToken[]
     questions Question[]
+    answers   Answer[]
 
     @@map("users")
 }
