@@ -18,7 +18,7 @@ Every feature lives under `src/features/<feature-name>/` and is built in this or
 4. **`*.service.ts`** — Business logic, orchestration, and transactions live here. Services take plain arguments and return plain data — never `req` or `res` — so they can be called from HTTP controllers, background workers, or tests without an Express context.
 5. **`*.controller.ts`** — Parses the request against the Zod schema, calls the service, and shapes the HTTP response. No business rules and no direct Prisma calls here — if you're tempted to add either, it belongs in the service or model instead.
 6. **`*.routes.ts`** — Maps paths to controllers and mounts any feature-local middleware. No validation, no business logic, no database access.
-7. **`*.middleware.ts`** — Only if the feature needs its own middleware (e.g. `requireQuestionOwner`). Not every feature needs one.
+7. **`*.middleware.ts`** — Only if the feature needs its own middleware. Most don't. In particular, **authorization is not middleware here**: "only the author may edit this" lives in the service, so a background worker or a test calling the service directly is held to the same rule as an HTTP request. A route guard would protect only the HTTP path.
 8. **`index.ts`** — Re-exports the feature's public surface only (its router, and any types other features are allowed to depend on). Never re-export internals.
 9. **Wire into `src/routes.ts`** — Mount the new feature router alongside the others.
 10. **Tests** — Unit tests for pure logic go in the feature's own `__tests__/` folder and require no infrastructure. Integration tests that exercise real database behavior (constraints, transactions, race conditions) go in `tests/integration/` and run against Testcontainers, not mocks.
@@ -44,6 +44,7 @@ Every feature lives under `src/features/<feature-name>/` and is built in this or
 - [ ] Files created in the order above, one responsibility per file
 - [ ] No repository layer unless the feature's complexity genuinely requires it
 - [ ] Service functions accept plain arguments, return plain data, no Express types
+- [ ] Ownership and permission checks live in the service, not in route middleware
 - [ ] Cross-feature access goes through `index.ts`, never a deep import
 - [ ] Race conditions and invariants enforced at the database level where possible (constraints, transactions), not just in application code
 - [ ] Unit tests for pure logic, integration tests (Testcontainers) for anything touching Postgres/Redis behavior

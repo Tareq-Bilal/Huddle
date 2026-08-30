@@ -38,16 +38,19 @@ export const accept = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const update = catchAsync(async (req: Request, res: Response) => {
-  // `requireAnswerOwner` has already confirmed req.user owns this answer.
   const { answerId } = req.params as unknown as AnswerIdParam;
-  const answer = await answerService.updateAnswer(answerId, req.body as UpdateAnswerDto);
+  const answer = await answerService.updateAnswer(
+    answerId,
+    req.body as UpdateAnswerDto,
+    req.user!.id,
+  );
 
   res.status(200).json({ answer });
 });
 
 export const remove = catchAsync(async (req: Request, res: Response) => {
   const { answerId } = req.params as unknown as AnswerIdParam;
-  await answerService.deleteAnswer(answerId);
+  await answerService.deleteAnswer(answerId, req.user!.id);
 
   res.status(204).send();
 });

@@ -56,16 +56,19 @@ export const listOnAnswer = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const update = catchAsync(async (req: Request, res: Response) => {
-  // `requireCommentOwner` has already confirmed req.user owns this comment.
   const { commentId } = req.params as unknown as CommentIdParam;
-  const comment = await commentService.updateComment(commentId, req.body as UpdateCommentDto);
+  const comment = await commentService.updateComment(
+    commentId,
+    req.body as UpdateCommentDto,
+    req.user!.id,
+  );
 
   res.status(200).json({ comment });
 });
 
 export const remove = catchAsync(async (req: Request, res: Response) => {
   const { commentId } = req.params as unknown as CommentIdParam;
-  await commentService.deleteComment(commentId);
+  await commentService.deleteComment(commentId, req.user!.id);
 
   res.status(204).send();
 });

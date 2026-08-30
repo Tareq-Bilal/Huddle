@@ -1,3 +1,4 @@
+import { requireAuthor } from "../../shared/authorization.ts";
 import { NotFoundError } from "../../shared/errors/app-error.ts";
 import { prisma } from "../../shared/lib/prisma.ts";
 import { toPageMeta, toSkip } from "../../shared/pagination.ts";
@@ -93,8 +94,8 @@ export async function getQuestionById(id: string): Promise<QuestionDetail> {
 }
 
 /**
- * Edits a question. Ownership is already enforced by `requireQuestionOwner` on
- * the route, so this takes the owner's id only to hand it to tag resolution.
+ * Edits a question. Only its author may do so — the check lives here rather than
+ * in route middleware so that any caller reaches it, not just an HTTP request.
  *
  * When `tags` is supplied it replaces the whole set. Tags are resolved before
  * the transaction opens, for the same reason as `createQuestion`. Each tag's
@@ -105,20 +106,24 @@ export async function getQuestionById(id: string): Promise<QuestionDetail> {
 export async function updateQuestion(
   id: string,
   input: UpdateQuestionDto,
-  authorId: number,
+  userId: number,
 ): Promise<QuestionDetail> {
+  // The tags are needed anyway, so the ownership check rides along on the same
+  // read rather than paying for a second one.
   const current = await prisma.question.findUnique({
     where: { id },
-    select: { tags: { select: { id: true } } },
+    select: { authorId: true, tags: { select: { id: true } } },
   });
 
   if (!current) {
     throw new NotFoundError(`No question found with id ${id}`);
   }
 
+  requireAuthor(current.authorId, userId, "question");
+
   const currentTagIds = current.tags.map((tag) => tag.id);
   const nextTagIds = input.tags
-    ? (await findOrCreateByNames(input.tags, authorId)).map((tag) => tag.id)
+    ? (await findOrCreateByNames(input.tags, userId)).map((tag) => tag.id)
     : currentTagIds;
 
   const { added, removed } = diffTagIds(currentTagIds, nextTagIds);
@@ -155,19 +160,22 @@ export async function updateQuestion(
 }
 
 /**
- * Deletes a question. Prisma clears the implicit tag join rows on its own, but
- * the denormalised `questionCount` is ours to maintain — every tag the question
- * carried loses one, in the same transaction as the delete.
+ * Deletes a question, at its author's request. Prisma clears the implicit tag
+ * join rows on its own, but the denormalised `questionCount` is ours to
+ * maintain — every tag the question carried loses one, in the same transaction
+ * as the delete.
  */
-export async function deleteQuestion(id: string): Promise<void> {
+export async function deleteQuestion(id: string, userId: number): Promise<void> {
   const question = await prisma.question.findUnique({
     where: { id },
-    select: { tags: { select: { id: true } } },
+    select: { authorId: true, tags: { select: { id: true } } },
   });
 
   if (!question) {
     throw new NotFoundError(`No question found with id ${id}`);
   }
+
+  requireAuthor(question.authorId, userId, "question");
 
   const tagIds = question.tags.map((tag) => tag.id);
 

@@ -2,7 +2,6 @@ import { Router } from "express";
 import { authenticate } from "../../shared/middlewares/authenticate.ts";
 import { validate } from "../../shared/validate.ts";
 import * as commentController from "./comment.controller.ts";
-import { requireCommentOwner } from "./comment.middleware.ts";
 import {
   answerIdParamSchema,
   commentIdParamSchema,
@@ -48,11 +47,12 @@ commentRoutes.post(
   commentController.createOnAnswer,
 );
 
+// Ownership is not checked here: the service enforces it, so a worker or a test
+// calling it directly is held to the same rule as an HTTP request.
 commentRoutes.patch(
   "/comments/:commentId",
   authenticate,
   validate(commentIdParamSchema, "params"),
-  requireCommentOwner,
   validate(updateCommentSchema, "body"),
   commentController.update,
 );
@@ -61,6 +61,5 @@ commentRoutes.delete(
   "/comments/:commentId",
   authenticate,
   validate(commentIdParamSchema, "params"),
-  requireCommentOwner,
   commentController.remove,
 );

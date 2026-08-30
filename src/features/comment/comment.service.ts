@@ -1,3 +1,4 @@
+import { requireOwner } from "../../shared/authorization.ts";
 import { NotFoundError } from "../../shared/errors/app-error.ts";
 import { isForeignKeyViolation } from "../../shared/errors/prisma-error.ts";
 import { prisma } from "../../shared/lib/prisma.ts";
@@ -76,12 +77,15 @@ export async function listComments(
   return { comments, meta: toPageMeta(total, page, limit) };
 }
 
-/** Ownership is enforced by `requireCommentOwner` on the route, so this only
- *  needs the id and the new text. */
-export function updateComment(
+/** Edits a comment's body. Only its author may do so — the check lives here
+ *  rather than in route middleware so that any caller reaches it. */
+export async function updateComment(
   commentId: string,
   input: UpdateCommentDto,
+  userId: number,
 ): Promise<CommentResponse> {
+  await requireOwner(prisma.comment, commentId, userId, "comment");
+
   return prisma.comment.update({
     where: { id: commentId },
     data: { body: input.body },
@@ -89,7 +93,9 @@ export function updateComment(
   });
 }
 
-export async function deleteComment(commentId: string): Promise<void> {
+export async function deleteComment(commentId: string, userId: number): Promise<void> {
+  await requireOwner(prisma.comment, commentId, userId, "comment");
+
   await prisma.comment.delete({ where: { id: commentId } });
 }
 

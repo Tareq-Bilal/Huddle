@@ -63,7 +63,7 @@ huddle/
 │   │   │   ├── question.service.ts      business logic
 │   │   │   ├── question.controller.ts   parses request, calls service
 │   │   │   ├── question.routes.ts       endpoint definitions
-│   │   │   ├── question.middleware.ts   e.g. requireQuestionOwner
+│   │   │   ├── question.middleware.ts   only if a feature needs one; ownership checks live in the service
 │   │   │   ├── index.ts                 public contract
 │   │   │   └── __tests__/
 │   │   ├── answer/
@@ -179,9 +179,9 @@ flowchart TD
     subgraph FeatureLayer["Feature module"]
         direction TB
         FRoutes["*.routes.ts"]
-        FMiddleware["*.middleware.ts<br/>authenticate / ownership checks"]
+        FMiddleware["*.middleware.ts<br/>authenticate"]
         Controller["*.controller.ts<br/>Zod validation"]
-        Service["*.service.ts<br/>business logic + transactions"]
+        Service["*.service.ts<br/>business logic + ownership + transactions"]
         Model["*.model.ts<br/>pure rules, DTOs"]
         Repository["*.repository.ts<br/>vote only"]
     end

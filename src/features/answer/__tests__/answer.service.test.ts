@@ -52,7 +52,13 @@ beforeEach(() => {
   mocks.answerFindMany.mockResolvedValue([answerRow]);
   mocks.answerCount.mockResolvedValue(1);
   mocks.answerUpdate.mockResolvedValue({ ...answerRow, question: { acceptedAnswerId: null } });
-  mocks.answerFindUnique.mockResolvedValue({ ...answerRow, question: { authorId: 7 } });
+  // Serves both acceptAnswer (which needs question.authorId) and the ownership
+  // check (which needs the answer's own authorId).
+  mocks.answerFindUnique.mockResolvedValue({
+    ...answerRow,
+    authorId: 7,
+    question: { authorId: 7 },
+  });
 });
 
 describe("createAnswer", () => {
@@ -163,7 +169,7 @@ describe("acceptAnswer", () => {
 
 describe("updateAnswer", () => {
   it("writes the new body", async () => {
-    await updateAnswer(ANSWER_ID, input);
+    await updateAnswer(ANSWER_ID, input, 7);
 
     expect(mocks.answerUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: ANSWER_ID }, data: { body: input.body } }),
@@ -176,16 +182,44 @@ describe("updateAnswer", () => {
       question: { acceptedAnswerId: ANSWER_ID },
     });
 
-    const result = await updateAnswer(ANSWER_ID, input);
+    const result = await updateAnswer(ANSWER_ID, input, 7);
 
     expect(result.isAccepted).toBe(true);
+  });
+
+  it("refuses a caller who is not the author", async () => {
+    mocks.answerFindUnique.mockResolvedValue({ authorId: 7 });
+
+    await expect(updateAnswer(ANSWER_ID, input, 99)).rejects.toThrow(ForbiddenError);
+    expect(mocks.answerUpdate).not.toHaveBeenCalled();
+  });
+
+  it("throws NotFound when the answer does not exist", async () => {
+    mocks.answerFindUnique.mockResolvedValue(null);
+
+    await expect(updateAnswer(MISSING_ID, input, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.answerUpdate).not.toHaveBeenCalled();
   });
 });
 
 describe("deleteAnswer", () => {
   it("deletes the row by id", async () => {
-    await deleteAnswer(ANSWER_ID);
+    await deleteAnswer(ANSWER_ID, 7);
 
     expect(mocks.answerDelete).toHaveBeenCalledWith({ where: { id: ANSWER_ID } });
+  });
+
+  it("refuses a caller who is not the author", async () => {
+    mocks.answerFindUnique.mockResolvedValue({ authorId: 7 });
+
+    await expect(deleteAnswer(ANSWER_ID, 99)).rejects.toThrow(ForbiddenError);
+    expect(mocks.answerDelete).not.toHaveBeenCalled();
+  });
+
+  it("throws NotFound when the answer does not exist", async () => {
+    mocks.answerFindUnique.mockResolvedValue(null);
+
+    await expect(deleteAnswer(MISSING_ID, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.answerDelete).not.toHaveBeenCalled();
   });
 });

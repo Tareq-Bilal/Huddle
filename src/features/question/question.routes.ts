@@ -2,7 +2,6 @@ import { Router } from "express";
 import { authenticate } from "../../shared/middlewares/authenticate.ts";
 import { validate } from "../../shared/validate.ts";
 import * as questionController from "./question.controller.ts";
-import { requireQuestionOwner } from "./question.middleware.ts";
 import {
   createQuestionSchema,
   listQuestionsQuerySchema,
@@ -23,13 +22,12 @@ questionRoutes.post(
   questionController.create,
 );
 
-// authenticate sets req.user, then the id param is validated, then ownership is
-// checked (needs both), then the body — controller runs only if all pass.
+// Ownership is not checked here: the service enforces it, so a worker or a test
+// calling it directly is held to the same rule as an HTTP request.
 questionRoutes.patch(
   "/:id",
   authenticate,
   validate(questionIdParamSchema, "params"),
-  requireQuestionOwner,
   validate(updateQuestionSchema, "body"),
   questionController.update,
 );
@@ -38,6 +36,5 @@ questionRoutes.delete(
   "/:id",
   authenticate,
   validate(questionIdParamSchema, "params"),
-  requireQuestionOwner,
   questionController.remove,
 );

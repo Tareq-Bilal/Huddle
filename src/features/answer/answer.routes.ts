@@ -2,7 +2,6 @@ import { Router } from "express";
 import { authenticate } from "../../shared/middlewares/authenticate.ts";
 import { validate } from "../../shared/validate.ts";
 import * as answerController from "./answer.controller.ts";
-import { requireAnswerOwner } from "./answer.middleware.ts";
 import {
   answerIdParamSchema,
   createAnswerSchema,
@@ -38,11 +37,12 @@ answerRoutes.post(
   answerController.accept,
 );
 
+// Ownership is not checked here: the service enforces it, so a worker or a test
+// calling it directly is held to the same rule as an HTTP request.
 answerRoutes.patch(
   "/answers/:answerId",
   authenticate,
   validate(answerIdParamSchema, "params"),
-  requireAnswerOwner,
   validate(updateAnswerSchema, "body"),
   answerController.update,
 );
@@ -51,6 +51,5 @@ answerRoutes.delete(
   "/answers/:answerId",
   authenticate,
   validate(answerIdParamSchema, "params"),
-  requireAnswerOwner,
   answerController.remove,
 );

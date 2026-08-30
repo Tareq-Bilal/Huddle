@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError } from "../../../shared/errors/app-error.ts";
+import { ForbiddenError, NotFoundError } from "../../../shared/errors/app-error.ts";
 
 const mocks = vi.hoisted(() => ({
   questionCreate: vi.fn(),
@@ -216,7 +216,7 @@ describe("updateQuestion", () => {
   });
 
   it("leaves tags untouched when the patch omits them", async () => {
-    mocks.questionFindUnique.mockResolvedValue({ id: QUESTION_ID, tags: [{ id: 1 }] });
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
 
     await updateQuestion(QUESTION_ID, { title: "A better, longer title here" }, 7);
 
@@ -227,7 +227,7 @@ describe("updateQuestion", () => {
   });
 
   it("resolves replacement tags before opening the transaction", async () => {
-    mocks.questionFindUnique.mockResolvedValue({ id: QUESTION_ID, tags: [{ id: 1 }] });
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
 
     const order: string[] = [];
     mocks.findOrCreateByNames.mockImplementation(async () => {
@@ -251,7 +251,7 @@ describe("updateQuestion", () => {
   it("moves questionCount up for added tags and down for removed ones", async () => {
     // Currently tagged 1 and 3; the new set resolves to 1 and 2.
     mocks.questionFindUnique.mockResolvedValue({
-      id: QUESTION_ID,
+      authorId: 7,
       tags: [{ id: 1 }, { id: 3 }],
     });
     mocks.findOrCreateByNames.mockResolvedValue([nodeJs, express]);
@@ -269,11 +269,28 @@ describe("updateQuestion", () => {
   });
 
   it("does every write inside one transaction", async () => {
-    mocks.questionFindUnique.mockResolvedValue({ id: QUESTION_ID, tags: [{ id: 1 }] });
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
 
     await updateQuestion(QUESTION_ID, { body: "A rewritten body, comfortably past the floor." }, 7);
 
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a caller who is not the author", async () => {
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
+
+    await expect(
+      updateQuestion(QUESTION_ID, { title: "Someone else's question" }, 99),
+    ).rejects.toThrow(ForbiddenError);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("checks ownership on the read it already makes, not a second one", async () => {
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
+
+    await updateQuestion(QUESTION_ID, { title: "A better, longer title here" }, 7);
+
+    expect(mocks.questionFindUnique).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -281,17 +298,24 @@ describe("deleteQuestion", () => {
   it("throws NotFound when the question does not exist", async () => {
     mocks.questionFindUnique.mockResolvedValue(null);
 
-    await expect(deleteQuestion(MISSING_ID)).rejects.toThrow(NotFoundError);
+    await expect(deleteQuestion(MISSING_ID, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses a caller who is not the author", async () => {
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
+
+    await expect(deleteQuestion(QUESTION_ID, 99)).rejects.toThrow(ForbiddenError);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it("decrements questionCount for every attached tag", async () => {
     mocks.questionFindUnique.mockResolvedValue({
-      id: QUESTION_ID,
+      authorId: 7,
       tags: [{ id: 1 }, { id: 2 }],
     });
 
-    await deleteQuestion(QUESTION_ID);
+    await deleteQuestion(QUESTION_ID, 7);
 
     expect(mocks.tagUpdateMany).toHaveBeenCalledWith({
       where: { id: { in: [1, 2] } },
@@ -300,9 +324,9 @@ describe("deleteQuestion", () => {
   });
 
   it("deletes the row inside the same transaction", async () => {
-    mocks.questionFindUnique.mockResolvedValue({ id: QUESTION_ID, tags: [{ id: 1 }] });
+    mocks.questionFindUnique.mockResolvedValue({ authorId: 7, tags: [{ id: 1 }] });
 
-    await deleteQuestion(QUESTION_ID);
+    await deleteQuestion(QUESTION_ID, 7);
 
     expect(mocks.questionDelete).toHaveBeenCalledWith({ where: { id: QUESTION_ID } });
     expect(mocks.transaction).toHaveBeenCalledTimes(1);

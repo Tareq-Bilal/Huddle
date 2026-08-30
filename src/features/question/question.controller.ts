@@ -34,7 +34,6 @@ export const getById = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const update = catchAsync(async (req: Request, res: Response) => {
-  // `requireQuestionOwner` has already confirmed req.user owns this question.
   const { id } = req.params as unknown as QuestionIdParam;
   const question = await questionService.updateQuestion(
     id,
@@ -47,7 +46,7 @@ export const update = catchAsync(async (req: Request, res: Response) => {
 
 export const remove = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params as unknown as QuestionIdParam;
-  await questionService.deleteQuestion(id);
+  await questionService.deleteQuestion(id, req.user!.id);
 
   res.status(204).send();
 });

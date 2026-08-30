@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "../../../generated/prisma/client.ts";
-import { NotFoundError } from "../../../shared/errors/app-error.ts";
+import { ForbiddenError, NotFoundError } from "../../../shared/errors/app-error.ts";
 
 /** What Prisma throws when the question or answer a comment points at is gone. */
 function foreignKeyViolation() {
@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   answerFindUnique: vi.fn(),
   commentCreate: vi.fn(),
   commentFindMany: vi.fn(),
+  commentFindUnique: vi.fn(),
   commentCount: vi.fn(),
   commentUpdate: vi.fn(),
   commentDelete: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("../../../shared/lib/prisma.ts", () => ({
     comment: {
       create: mocks.commentCreate,
       findMany: mocks.commentFindMany,
+      findUnique: mocks.commentFindUnique,
       count: mocks.commentCount,
       update: mocks.commentUpdate,
       delete: mocks.commentDelete,
@@ -65,6 +67,7 @@ beforeEach(() => {
   mocks.commentFindMany.mockResolvedValue([commentRow]);
   mocks.commentCount.mockResolvedValue(1);
   mocks.commentUpdate.mockResolvedValue(commentRow);
+  mocks.commentFindUnique.mockResolvedValue({ authorId: 7 });
 });
 
 describe("createComment", () => {
@@ -167,18 +170,46 @@ describe("listComments", () => {
 
 describe("updateComment", () => {
   it("writes the new body", async () => {
-    await updateComment(COMMENT_ID, input);
+    await updateComment(COMMENT_ID, input, 7);
 
     expect(mocks.commentUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: COMMENT_ID }, data: { body: input.body } }),
     );
   });
+
+  it("refuses a caller who is not the author", async () => {
+    mocks.commentFindUnique.mockResolvedValue({ authorId: 7 });
+
+    await expect(updateComment(COMMENT_ID, input, 99)).rejects.toThrow(ForbiddenError);
+    expect(mocks.commentUpdate).not.toHaveBeenCalled();
+  });
+
+  it("throws NotFound when the comment does not exist", async () => {
+    mocks.commentFindUnique.mockResolvedValue(null);
+
+    await expect(updateComment(MISSING_ID, input, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.commentUpdate).not.toHaveBeenCalled();
+  });
 });
 
 describe("deleteComment", () => {
   it("deletes the row by id", async () => {
-    await deleteComment(COMMENT_ID);
+    await deleteComment(COMMENT_ID, 7);
 
     expect(mocks.commentDelete).toHaveBeenCalledWith({ where: { id: COMMENT_ID } });
+  });
+
+  it("refuses a caller who is not the author", async () => {
+    mocks.commentFindUnique.mockResolvedValue({ authorId: 7 });
+
+    await expect(deleteComment(COMMENT_ID, 99)).rejects.toThrow(ForbiddenError);
+    expect(mocks.commentDelete).not.toHaveBeenCalled();
+  });
+
+  it("throws NotFound when the comment does not exist", async () => {
+    mocks.commentFindUnique.mockResolvedValue(null);
+
+    await expect(deleteComment(MISSING_ID, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.commentDelete).not.toHaveBeenCalled();
   });
 });

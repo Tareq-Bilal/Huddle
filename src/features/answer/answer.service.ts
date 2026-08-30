@@ -1,3 +1,4 @@
+import { requireOwner } from "../../shared/authorization.ts";
 import { ForbiddenError, NotFoundError } from "../../shared/errors/app-error.ts";
 import { prisma } from "../../shared/lib/prisma.ts";
 import { toPageMeta, toSkip } from "../../shared/pagination.ts";
@@ -92,12 +93,15 @@ export async function acceptAnswer(answerId: string, userId: number): Promise<An
   return toAnswerResponse(stripQuestion(answer), answerId);
 }
 
-/** Edits an answer's body. Ownership is enforced by `requireAnswerOwner` on the
- *  route, so this only needs the id and the new text. */
+/** Edits an answer's body. Only its author may do so — the check lives here
+ *  rather than in route middleware so that any caller reaches it. */
 export async function updateAnswer(
   answerId: string,
   input: UpdateAnswerDto,
+  userId: number,
 ): Promise<AnswerResponse> {
+  await requireOwner(prisma.answer, answerId, userId, "answer");
+
   const answer = await prisma.answer.update({
     where: { id: answerId },
     data: { body: input.body },
@@ -107,9 +111,11 @@ export async function updateAnswer(
   return toAnswerResponse(stripQuestion(answer), answer.question.acceptedAnswerId);
 }
 
-/** Deletes an answer. If it was the accepted one, the `SetNull` foreign key
- *  clears the question's pointer on its own. */
-export async function deleteAnswer(answerId: string): Promise<void> {
+/** Deletes an answer, at its author's request. If it was the accepted one, the
+ *  `SetNull` foreign key clears the question's pointer on its own. */
+export async function deleteAnswer(answerId: string, userId: number): Promise<void> {
+  await requireOwner(prisma.answer, answerId, userId, "answer");
+
   await prisma.answer.delete({ where: { id: answerId } });
 }
 
