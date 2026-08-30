@@ -1242,6 +1242,535 @@
       ]
     },
     {
+      "name": "Comment",
+      "description": "Needs questionId (from Create Question) and answerId (from Create Answer). The capture script fills commentId. The 403 requests need a second user's token in otherAccessToken.",
+      "item": [
+        {
+          "name": "Create Comment on Question",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Save the comment's UUID for the update / delete requests",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"commentId\", pm.response.json().comment.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"What Node version are you on? Streams changed a lot in 18.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "comments"
+              ]
+            },
+            "description": "Any logged-in user may comment (collection bearer). Visible immediately, no reputation gate."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment on Question - Validation Error (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"short\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "comments"
+              ]
+            },
+            "description": "Body must be 15 to 600 characters."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment on Question - No Auth (401)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"What Node version are you on? Streams changed a lot in 18.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "comments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment on Question - Question Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Commenting on a question id that does not exist.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000",
+                "comments"
+              ]
+            },
+            "description": "The foreign key rejects the insert; the service turns that into a 404."
+          },
+          "response": []
+        },
+        {
+          "name": "List Comments on Question",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/{{questionId}}/comments?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "{{questionId}}",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Public. Oldest first."
+          },
+          "response": []
+        },
+        {
+          "name": "List Comments on Question - Not Found (404)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/questions/00000000-0000-7000-8000-000000000000/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "questions",
+                "00000000-0000-7000-8000-000000000000",
+                "comments"
+              ]
+            },
+            "description": "A missing question and a question with no comments are different — this one is a 404, not an empty list."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment on Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"pipeline() is better than .pipe() here because it forwards errors.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}",
+                "comments"
+              ]
+            },
+            "description": "Same endpoint shape, different target. The comment is stored against answerId only."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Comment on Answer - Answer Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Commenting on an answer id that does not exist.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/00000000-0000-7000-8000-000000000000/comments",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "00000000-0000-7000-8000-000000000000",
+                "comments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Comments on Answer",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/answers/{{answerId}}/comments?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "answers",
+                "{{answerId}}",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Edit: and on Node 20 the default highWaterMark is still 64 KiB.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": "Owner only (collection bearer)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Comment - Empty Body (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": "body is the only field and it is required."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Comment - Not Owner (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Trying to edit a comment that belongs to someone else.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "{{commentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Comment - Not Found (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"body\": \"Editing a comment id that does not correspond to any row.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Comment - Not Owner (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": "Run before Delete Comment — afterwards there is nothing left to refuse."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Comment - Not Found (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/00000000-0000-7000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "00000000-0000-7000-8000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}{{version}}"
+              ],
+              "path": [
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": "Returns 204."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "health",
       "request": {
         "method": "GET",
@@ -1320,6 +1849,10 @@
     },
     {
       "key": "otherAnswerId",
+      "value": ""
+    },
+    {
+      "key": "commentId",
       "value": ""
     }
   ]
