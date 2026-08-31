@@ -19,6 +19,7 @@ model Answer {
     acceptedBy Question? @relation("AcceptedAnswer")
 
     comments   Comment[]
+    votes      Vote[]
 
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt

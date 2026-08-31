@@ -23,6 +23,7 @@ model Question {
 
     answers   Answer[]  @relation("QuestionAnswers")
     comments  Comment[]
+    votes     Vote[]
 
     /// Exactly one accepted answer, or none. The `@unique` is what makes Postgres
     /// enforce "at most one per question"; `SetNull` means deleting the accepted

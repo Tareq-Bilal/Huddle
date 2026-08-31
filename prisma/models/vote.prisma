@@ -1,0 +1,29 @@
+/// One user's up (+1) or down (-1) vote on a question or an answer. Both the
+/// value and the "exactly one target" rule are held by CHECK constraints in the
+/// migration — Prisma's schema language cannot express either.
+model Vote {
+    id         String    @id @default(uuid(7)) @db.Uuid
+    value      Int
+
+    userId     Int
+    user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    questionId String?   @db.Uuid
+    question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+    answerId   String?   @db.Uuid
+    answer     Answer?   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
+    /// "One vote per user per target." A null target column is distinct from
+    /// every other null in Postgres, so answer votes (questionId null) never
+    /// collide on the first index, and question votes never collide on the
+    /// second.
+    @@unique([userId, questionId])
+    @@unique([userId, answerId])
+    @@index([questionId])
+    @@index([answerId])
+    @@map("votes")
+}
