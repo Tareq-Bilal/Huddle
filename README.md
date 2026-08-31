@@ -81,8 +81,7 @@ huddle/
 │   │   ├── vote/
 │   │   │   ├── vote.schema.ts
 │   │   │   ├── vote.model.ts            vote transition rules
-│   │   │   ├── vote.repository.ts       the one repository in the app
-│   │   │   ├── vote.service.ts          the transaction lives here
+│   │   │   ├── vote.service.ts          the reads and the transaction live here
 │   │   │   ├── vote.controller.ts
 │   │   │   ├── vote.routes.ts
 │   │   │   ├── index.ts
@@ -154,7 +153,7 @@ Each feature is organized as a small stack of layers with a strict dependency di
 | `*.service.ts`    | Business logic, orchestration, transactions                                  | Reading `req`/`res`                     |
 | `*.model.ts`      | Types, response DTOs, pure domain rule functions                             | Importing the Prisma client, any I/O        |
 | `*.schema.ts`     | Zod schemas and their inferred input types                                   | Anything else                               |
-| `*.repository.ts` | Prisma queries (only present in `vote`)                                    | Business rules                              |
+| `*.repository.ts` | Prisma queries, when a feature's persistence is complex enough to isolate  | Business rules                              |
 | `index.ts`        | Re-exporting the feature's public surface                                    | Re-exporting internals                      |
 
 Services take plain arguments and return plain data — no `req`, no `res` — which is what lets them be called from both the HTTP layer and, where relevant, from workers or tests without an Express context in sight.
@@ -183,7 +182,6 @@ flowchart TD
         Controller["*.controller.ts<br/>Zod validation"]
         Service["*.service.ts<br/>business logic + ownership + transactions"]
         Model["*.model.ts<br/>pure rules, DTOs"]
-        Repository["*.repository.ts<br/>vote only"]
     end
 
     Postgres[("PostgreSQL")]
@@ -197,8 +195,7 @@ flowchart TD
     Client --> Logger --> Parsers --> RateLimit --> Routes
     Routes -->|route matched| FRoutes --> FMiddleware --> Controller --> Service
     Service --> Model
-    Service -->|vote only| Repository -->|transaction| Postgres
-    Service -->|most features, direct Prisma calls| Postgres
+    Service -->|direct Prisma calls, transactions where needed| Postgres
     Service -->|trending, views, limits| Redis
     Service -->|enqueue job| Queue --> Worker -->|process job| Redis
 
@@ -217,7 +214,7 @@ Every request enters through `app.ts`'s middleware stack, gets routed into exact
 2. `routes.ts` has mounted `voteRoutes` at `/votes`; the feature's own router matches `/questions/:id`.
 3. `authenticate` (feature-local middleware) verifies the JWT and attaches `req.user`.
 4. `vote.controller.ts` parses the body against `castVoteSchema` and calls `vote.service.castVote(input, userId)` — no `req` beyond this point.
-5. `vote.service.ts` opens a Prisma interactive transaction: insert the vote row, update the question's score, update the author's reputation. All three commit together or not at all.
+5. `vote.service.ts` computes the deltas from `vote.model.ts`, then opens a Prisma interactive transaction: write the vote row, update the target's score, update the target author's reputation, and — for answer downvotes — the voter's own. Every write commits together or none does.
 6. The insert relies on a composite unique constraint on `(userId, targetId)`. A concurrent duplicate vote is rejected by Postgres with a `P2002` error, translated by `shared/errors/prisma-error.ts` into a `409 Conflict` — the database is the arbiter of the race, not application code.
 7. After the transaction commits, the service updates the Redis trending sorted set and enqueues a notification job. Neither happens inside the transaction.
 8. The controller sends the response; if anything threw along the way, `error-handler.ts`, mounted last in `app.ts`, is what actually writes the error response.

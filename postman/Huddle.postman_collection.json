@@ -1771,6 +1771,167 @@
       ]
     },
     {
+      "name": "Vote",
+      "description": "Needs questionId and answerId from the Question/Answer folders. The happy-path votes run as the second user (otherAccessToken) because you cannot vote on your own post; the 403 request runs as the collection bearer, who owns the question.",
+      "item": [
+        {
+          "name": "Upvote Question (other user)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": 1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "200 with { score, userVote: 1 }. Register/log in a second user and put their access token in otherAccessToken first."
+          },
+          "response": []
+        },
+        {
+          "name": "Switch to Downvote (other user)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": -1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "200. score moves by 2 (from +1 to -1)."
+          },
+          "response": []
+        },
+        {
+          "name": "Re-cast Same Vote (409)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": -1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "Casting the direction you already have is a conflict."
+          },
+          "response": []
+        },
+        {
+          "name": "Retract Question Vote (other user)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "200 with { score, userVote: null }. score returns to 0."
+          },
+          "response": []
+        },
+        {
+          "name": "Retract With No Vote (404)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "Run this straight after the retraction above — there is nothing left to remove."
+          },
+          "response": []
+        },
+        {
+          "name": "Vote On Own Question (403)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": 1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "Uses the collection bearer, who created the question."
+          },
+          "response": []
+        },
+        {
+          "name": "Vote Missing Question (404)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": 1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/00000000-0000-7000-8000-000000000000",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "00000000-0000-7000-8000-000000000000"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vote No Auth (401)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": 1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vote Bad Value (400)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": 5\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/questions/{{questionId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "questions", "{{questionId}}"]
+            },
+            "description": "value must be exactly 1 or -1."
+          },
+          "response": []
+        },
+        {
+          "name": "Upvote Answer (other user)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{otherAccessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\r\n    \"value\": 1\r\n}", "options": { "raw": { "language": "json" } } },
+            "url": {
+              "raw": "{{baseUrl}}{{version}}/votes/answers/{{answerId}}",
+              "host": ["{{baseUrl}}{{version}}"],
+              "path": ["votes", "answers", "{{answerId}}"]
+            },
+            "description": "200. The answer author gains 10 reputation."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "health",
       "request": {
         "method": "GET",
