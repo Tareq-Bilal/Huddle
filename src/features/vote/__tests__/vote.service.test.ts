@@ -23,7 +23,7 @@ vi.mock("../../../shared/lib/prisma.ts", () => ({
   },
 }));
 
-const { castVote, getTargetAuthorId, getUserVoteValue, persistVote } = await import(
+const { castVote, getTargetAuthorId, getUserVoteValue, persistVote, retractVote } = await import(
   "../vote.service.ts"
 );
 
@@ -269,5 +269,43 @@ describe("castVote", () => {
     mocks.txQuestionUpdate.mockResolvedValue({ score: 5 });
 
     await expect(castVote(question, 1, 7)).resolves.toEqual({ score: 5, userVote: 1 });
+  });
+});
+
+describe("retractVote", () => {
+  it("throws NotFound when the target does not exist", async () => {
+    mocks.questionFindUnique.mockResolvedValue(null);
+
+    await expect(retractVote(question, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("throws NotFound when there is no vote to retract", async () => {
+    mocks.voteFindUnique.mockResolvedValue(null);
+
+    await expect(retractVote(question, 7)).rejects.toThrow(NotFoundError);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("deletes the vote row and reverses the score", async () => {
+    mocks.voteFindUnique.mockResolvedValue({ value: -1 });
+
+    await retractVote(question, 7);
+
+    expect(mocks.txVoteDelete).toHaveBeenCalledWith({
+      where: { userId_questionId: { userId: 7, questionId: QUESTION_ID } },
+    });
+    expect(mocks.txQuestionUpdate).toHaveBeenCalledWith({
+      where: { id: QUESTION_ID },
+      data: { score: { increment: 1 } }, // undoing a -1
+      select: { score: true },
+    });
+  });
+
+  it("returns the new score and a null vote", async () => {
+    mocks.voteFindUnique.mockResolvedValue({ value: 1 });
+    mocks.txQuestionUpdate.mockResolvedValue({ score: 0 });
+
+    await expect(retractVote(question, 7)).resolves.toEqual({ score: 0, userVote: null });
   });
 });
