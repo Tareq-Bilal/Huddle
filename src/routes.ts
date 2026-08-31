@@ -4,6 +4,7 @@ import { authRoutes } from "./features/auth/index.ts";
 import { commentRoutes } from "./features/comment/index.ts";
 import { questionRoutes } from "./features/question/index.ts";
 import { tagRoutes } from "./features/tag/index.ts";
+import { voteRoutes } from "./features/vote/index.ts";
 
 export const apiRoutes = Router();
 
@@ -15,3 +16,5 @@ apiRoutes.use("/questions", questionRoutes);
 // their routers span several prefixes and mount at the root.
 apiRoutes.use("/", answerRoutes);
 apiRoutes.use("/", commentRoutes);
+
+apiRoutes.use("/votes", voteRoutes);
